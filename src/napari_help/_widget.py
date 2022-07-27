@@ -1,46 +1,30 @@
-"""
-This module is an example of a barebones QWidget plugin for napari
-
-It implements the Widget specification.
-see: https://napari.org/stable/plugins/guides.html?#widgets
-
-Replace code below according to your needs.
-"""
-from typing import TYPE_CHECKING
-
-from magicgui import magic_factory
-from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
-
-if TYPE_CHECKING:
-    import napari
+import napari
+from napari.utils.action_manager import action_manager
+from qtpy.QtWidgets import QFormLayout, QLabel, QWidget
 
 
-class ExampleQWidget(QWidget):
-    # your QWidget.__init__ can optionally request the napari viewer instance
-    # in one of two ways:
-    # 1. use a parameter called `napari_viewer`, as done here
-    # 2. use a type annotation of 'napari.viewer.Viewer' for any parameter
-    def __init__(self, napari_viewer):
-        super().__init__()
-        self.viewer = napari_viewer
+class HelpWidget(QWidget):
+    def __init__(self, viewer: napari.Viewer, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setLayout(QFormLayout())
+        self.layout().addRow("Keys:", QLabel("Actions:"))
+        self.viewer = viewer
+        self.viewer.layers.selection.events.active.connect(self.update_table)
+        self._current = None
 
-        btn = QPushButton("Click me!")
-        btn.clicked.connect(self._on_click)
+    def update_table(self, event):
+        active = event.value
+        if active is None:
+            self._update_table({})
+        else:
+            cls = active.__class__
+            if cls != self._current:
+                shortcuts = action_manager._get_layer_shortcuts([cls])[cls]
+                self._update_table(shortcuts)
 
-        self.setLayout(QHBoxLayout())
-        self.layout().addWidget(btn)
-
-    def _on_click(self):
-        print("napari has", len(self.viewer.layers), "layers")
-
-
-@magic_factory
-def example_magic_widget(img_layer: "napari.layers.Image"):
-    print(f"you have selected {img_layer}")
-
-
-# Uses the `autogenerate: true` flag in the plugin manifest
-# to indicate it should be wrapped as a magicgui to autogenerate
-# a widget.
-def example_function_widget(img_layer: "napari.layers.Image"):
-    print(f"you have selected {img_layer}")
+    def _update_table(self, shortcuts):
+        for i in range(self.layout().rowCount(), 1, -1):
+            self.layout().removeRow(i - 1)
+        for key, action in shortcuts.items():
+            key = " or ".join(key.strip("{}").split(", "))
+            self.layout().addRow(key, QLabel(action))

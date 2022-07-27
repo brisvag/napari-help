@@ -3,9 +3,6 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from ._widget import ExampleQWidget, example_magic_widget
+from ._widget import HelpWidget
 
-__all__ = (
-    "ExampleQWidget",
-    "example_magic_widget",
-)
+__all__ = ("HelpWidget",)
